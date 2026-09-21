@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Upload & List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      background-color: #f4f4f9;
+      box-sizing: border-box;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 480px;
+      max-width: 100%;
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #333;
+      text-align: center;
+    }
+
+    h3 {
+      color: #333;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 6px;
+    }
+
+    input[type="file"] {
+      display: block;
+      margin: 20px auto;
+      padding: 8px;
+      border: 1px dashed #aaa;
+      border-radius: 6px;
+      width: 100%;
+      cursor: pointer;
+      background: #fafafa;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4a6cf7;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      width: 100%;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #3a55c9;
+    }
+
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+
+    .secondary-btn {
+      background-color: #6c757d;
+      margin-top: 10px;
+    }
+
+    .secondary-btn:hover:not(:disabled) {
+      background-color: #565e64;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #555;
+      word-wrap: break-word;
+      text-align: center;
+    }
+
+    .divider {
+      margin: 30px 0 20px;
+      border-top: 1px solid #eee;
+    }
+
+    #docList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #docList li {
+      padding: 10px 12px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #fafafa;
+      font-size: 14px;
+      color: #333;
+      word-break: break-all;
+    }
+
+    #docList li.empty {
+      text-align: center;
+      color: #999;
+      font-style: italic;
+    }
+
+    .doc-link {
+      color: #4a6cf7;
+      text-decoration: none;
+    }
+
+    .doc-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>PDF Manager</h2>
+
+    <!-- Upload Section -->
+    <h3>Upload PDF</h3>
+    <form id="uploadForm">
+      <input type="file" id="pdfFile" name="file" accept="application/pdf" required />
+      <button type="submit" id="sendBtn">Send</button>
+    </form>
+    <div id="status"></div>
+
+    <div class="divider"></div>
+
+    <!-- List Section -->
+    <h3>Uploaded PDFs</h3>
+    <button type="button" id="refreshBtn" class="secondary-btn">Refresh List</button>
+    <ul id="docList">
+      <li class="empty">Click "Refresh List" to load documents.</li>
+    </ul>
+  </div>
+
+  <script>
+const API_URL = '/api/docs';
+
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('pdfFile');
+    const statusDiv = document.getElementById('status');
+    const sendBtn = document.getElementById('sendBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const docList = document.getElementById('docList');
+
+    // ---------- Upload ----------
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const file = fileInput.files[0];
+      if (!file) {
+        statusDiv.textContent = 'Please select a PDF file.';
+        return;
+      }
+
+      if (file.type !== 'application/pdf') {
+        statusDiv.textContent = 'Only PDF files are allowed.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      sendBtn.disabled = true;
+      statusDiv.textContent = 'Uploading...';
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          statusDiv.textContent = 'Upload successful! ✅';
+          fileInput.value = '';
+          loadDocs(); // auto-refresh list after upload
+        } else {
+          statusDiv.textContent = `Upload failed: ${response.status} ${response.statusText}`;
+        }
+      } catch (error) {
+        statusDiv.textContent = `Error: ${error.message}`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    // ---------- List ----------
+    async function loadDocs() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Loading...';
+      docList.innerHTML = '<li class="empty">Loading...</li>';
+
+      try {
+        const response = await fetch(API_URL, { method: 'GET' });
+
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        renderDocs(data);
+      } catch (error) {
+        docList.innerHTML = `<li class="empty">Error: ${error.message}</li>`;
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = 'Refresh List';
+      }
+    }
+
+    function renderDocs(data) {
+      // Normalize: accept either an array or {documents: [...]} / {files: [...]} etc.
+      let items = [];
+      if (Array.isArray(data)) {
+        items = data;
+      } else if (data && typeof data === 'object') {
+        const possibleArray = data.documents || data.files || data.docs || data.items;
+        if (Array.isArray(possibleArray)) items = possibleArray;
+      }
+
+      if (items.length === 0) {
+        docList.innerHTML = '<li class="empty">No documents found.</li>';
+        return;
+      }
+
+      docList.innerHTML = '';
+      items.forEach((item) => {
+        const li = document.createElement('li');
+
+        // Handle both plain strings and objects
+        if (typeof item === 'string') {
+          li.textContent = item;
+        } else {
+          const name = item.name || item.filename || item.id || JSON.stringify(item);
+          li.textContent = name;
+        }
+
+        docList.appendChild(li);
+      });
+    }
+
+    refreshBtn.addEventListener('click', loadDocs);
+
+    // Optional: load on page ready
+    // loadDocs();
+  </script>
+</body>
+</html>
