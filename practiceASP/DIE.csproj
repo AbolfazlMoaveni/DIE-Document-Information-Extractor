@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7e1e695c-a3fc-4b74-80cc-21febc1ed237</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="PdfPig" Version="0.1.16" />
+    <PackageReference Include="PdfPig.Rendering.Skia" Version="0.1.16.4" />
   </ItemGroup>
 
 </Project>
