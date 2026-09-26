@@ -1,4 +1,5 @@
-﻿using practiceASP;
+﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using practiceASP;
 using SkiaSharp;
 using System.IO;
 using System.Text;
@@ -7,6 +8,7 @@ using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using UglyToad.PdfPig.Rendering.Skia;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DIE.Endpoints
 {
@@ -14,8 +16,48 @@ namespace DIE.Endpoints
     {
         public static void Map(WebApplication app, string? ocrApiKey)
         {
+
+            //api to give preview and little info
+            app.MapGet("/api/docs/{id}/info", (string id) =>
+            {
+                var filePath = Path.Combine("Docs", id);
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    return Results.NotFound();
+                }
+
+                string name = id;
+                int pagenum;
+                string preview;
+                string title = "";
+                string author = "";
+                using (PdfDocument document = PdfDocument.Open(filePath))
+                {
+                    author = document.Information.Author;
+                    title = document.Information.Title;
+                    pagenum = document.NumberOfPages;
+                    if(document.GetPage(1).Text.Length < 200)
+                    {
+                        preview = ContentOrderTextExtractor.GetText(document.GetPage(1));
+                    }
+                    else
+                    {
+                        preview = ContentOrderTextExtractor.GetText(document.GetPage(1)).Remove(199) + "...";
+                    }
+                }
+                return Results.Ok(new
+                {
+                    Doc_name = name,
+                    number_of_pages = pagenum,
+                    title = title,
+                    author = author,
+                    preview = preview
+                });
+            });
+
             // API that gives information about the PDF
-            app.MapGet("/api/docs/{id}/info", async (string id) =>
+            app.MapGet("/api/docs/{id}/fullinfo", async (string id) =>
             {
                 var filePath = Path.Combine("Docs", id);
 
@@ -38,7 +80,7 @@ namespace DIE.Endpoints
 
                     StringBuilder allText = new StringBuilder();
 
-                    foreach (Page page in document.GetPages())
+                    foreach (UglyToad.PdfPig.Content.Page page in document.GetPages())
                     {
                         string text = ContentOrderTextExtractor.GetText(page);
 
