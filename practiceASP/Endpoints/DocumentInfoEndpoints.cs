@@ -388,4 +388,5 @@ namespace DIE.Endpoints
         }
 
     }
+    //add a processed folder for when we run fullinfo, the doc info would be cached in processed folder in a json file with the same doc name
 }
