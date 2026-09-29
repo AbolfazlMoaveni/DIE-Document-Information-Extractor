@@ -9,7 +9,7 @@ using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using UglyToad.PdfPig.Rendering.Skia;
 using static System.Net.Mime.MediaTypeNames;
-
+using System.Text.RegularExpressions;
 namespace DIE.Endpoints
 {
     public static class DocumentInfoEndpoints
@@ -111,7 +111,7 @@ namespace DIE.Endpoints
                     DocInfo info = new DocInfo(
                         name,
                         nump,
-                        allText.ToString(),
+                        Extract_clean_text(allText.ToString()),
                         numPicPages,
                         numTextPages,
                         picBasedPages,
@@ -358,5 +358,34 @@ namespace DIE.Endpoints
                 );
             }
         }
+
+        private static readonly Regex _ctrl = new(@"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]", RegexOptions.Compiled);
+        private static readonly Regex _invisible = new(@"[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u00AD]", RegexOptions.Compiled);
+        private static readonly Regex _spaces = new(@"[\t\u00A0\u2000-\u200A\u202F\u205F\u3000]", RegexOptions.Compiled);
+        private static readonly Regex _hyphenJoin = new(@"(\p{Ll})-\n(\p{Ll})", RegexOptions.Compiled);
+        private static readonly Regex _pageNum = new(@"^[ \t]*(?:page[ \t]*)?\d+(?:[ \t]*(?:of|/)[ \t]*\d+)?[ \t]*$", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        private static readonly Regex _multiSpace = new(@"[ ]{2,}", RegexOptions.Compiled);
+        private static readonly Regex _multiNl = new(@"\n{3,}", RegexOptions.Compiled);
+        private static readonly Regex _trailSpace = new(@"[ \t]+\n", RegexOptions.Compiled);
+        private static readonly Regex _leadSpace = new(@"\n[ \t]+", RegexOptions.Compiled);
+
+        private static string Extract_clean_text(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+            string text = input.Replace("\r\n", "\n").Replace('\r', '\n');
+            text = text.Normalize(NormalizationForm.FormKC);
+            text = _ctrl.Replace(text, "");
+            text = _invisible.Replace(text, "");
+            text = _spaces.Replace(text, " ");
+            text = _hyphenJoin.Replace(text, "$1$2");
+            text = _pageNum.Replace(text, "");
+            text = _multiSpace.Replace(text, " ");
+            text = _multiNl.Replace(text, "\n\n");
+            text = _trailSpace.Replace(text, "\n");
+            text = _leadSpace.Replace(text, "\n");
+            return text.Trim();
+        }
+
     }
 }
