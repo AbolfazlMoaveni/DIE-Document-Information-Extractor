@@ -37,7 +37,7 @@ namespace DIE.Endpoints
                     author = document.Information.Author;
                     title = document.Information.Title;
                     pagenum = document.NumberOfPages;
-                    if(document.GetPage(1).Text.Length < 200)
+                    if (document.GetPage(1).Text.Length < 200)
                     {
                         preview = ContentOrderTextExtractor.GetText(document.GetPage(1));
                     }
@@ -56,11 +56,30 @@ namespace DIE.Endpoints
                 });
             });
 
-            // API that gives information about the PDF
+            // API that gives detailed information about the PDF
             app.MapGet("/api/docs/{id}/fullinfo", async (string id) =>
             {
+                Directory.CreateDirectory("Processed");
+
+                var processedFilePath = Path.Combine("Processed", id + ".json");
                 var filePath = Path.Combine("Docs", id);
 
+                // Check cache
+                if (System.IO.File.Exists(processedFilePath))
+                {
+                    string cachedJson =
+                        await System.IO.File.ReadAllTextAsync(processedFilePath);
+
+                    var cachedInfo =
+                        JsonSerializer.Deserialize<DocInfo>(cachedJson);
+
+                    if (cachedInfo != null)
+                    {
+                        return Results.Ok(cachedInfo);
+                    }
+                }
+
+                // Cache doesn't exist (or couldn't be loaded)
                 if (!System.IO.File.Exists(filePath))
                 {
                     return Results.NotFound();
@@ -116,6 +135,14 @@ namespace DIE.Endpoints
                         numTextPages,
                         picBasedPages,
                         textBasedPages
+                    );
+
+                    // Cache the result in the Processed folder
+                    string json = JsonSerializer.Serialize(info);
+
+                    await System.IO.File.WriteAllTextAsync(
+                        processedFilePath,
+                        json
                     );
 
                     return Results.Ok(info);
