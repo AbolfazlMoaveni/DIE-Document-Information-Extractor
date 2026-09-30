@@ -252,4 +252,4 @@ This also makes the project a practical exploration of:
 
 🚧 **In development**
 
-The project is currently focused on reliable PDF text extraction and OCR. AI-powered document analysis and caching are planned next.
+The project is currently focused on reliable PDF text extraction and OCR. AI-powered document analysis and chunking for big documents are planned next.
