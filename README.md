@@ -206,12 +206,12 @@ The project is being developed incrementally.
 - [x] OCR integration
 - [x] Combined text extraction
 - [x] Extracted text cleaning
+- [x] Cache processed documents
+- [x] Store processed document results
 
 ### Next
 
-- [ ] Cache processed documents
 - [ ] Avoid repeating OCR for already processed documents
-- [ ] Store processed document results
 - [ ] Improve document preview generation
 - [ ] Add AI-powered document analysis
 - [ ] Extract structured information such as:
